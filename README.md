@@ -1,5 +1,5 @@
 first get tampermonkey or your userscript manager of choice
 
-then [click here](https://raw.githubusercontent.com/YOUR_USERNAME/REPO_NAME/main/replyguy-signature.user.js)
+then [click here](https://github.com/hikipilling/replyguy-signatures/raw/refs/heads/main/replyguy-signatures.user.js)
 
 happy replying everyone!
