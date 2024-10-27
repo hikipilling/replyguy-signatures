@@ -24,7 +24,6 @@
         const range = document.createRange();
 
         const textNodes = [];
-
         function findTextNodes(node) {
             for (const child of node.childNodes) {
                 if (child.nodeType === Node.TEXT_NODE) {
@@ -63,9 +62,7 @@
 
         document.execCommand('insertText', false, SIGNATURE.trim());
 
-        editor.dispatchEvent(new Event('change', {
-            bubbles: true
-        }));
+        editor.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
     function processEditor(editorDiv) {
@@ -78,8 +75,8 @@
             const replyButton = e.target.closest('[data-testid="tweetButton"], [data-testid="tweetButtonInline"]');
             if (!replyButton || isAddingSignature || replyButton.getAttribute('aria-disabled') === 'true') return;
 
-            const isReply = Array.from(editorDiv.closest('[role="dialog"]') ? .querySelectorAll('*') || editorDiv.closest('[data-testid="inline_reply_offscreen"]') ? .querySelectorAll('*') || [])
-                .some(el => el.textContent ? .includes('Replying to'));
+            const isReply = Array.from(editorDiv.closest('[role="dialog"]')?.querySelectorAll('*') || editorDiv.closest('[data-testid="inline_reply_offscreen"]')?.querySelectorAll('*') || [])
+                .some(el => el.textContent?.includes('Replying to'));
 
             debugLog('Is reply check:', isReply);
 
