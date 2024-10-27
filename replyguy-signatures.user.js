@@ -19,111 +19,110 @@
         console.log(`%c[Reply Signature Debug] ${message}`, 'color: #00a1f3', data);
     }
 
-    function addSignature(editor) {
-        const selection = window.getSelection();
-        const range = document.createRange();
+function addSignature(editor) {
+    const selection = window.getSelection();
+    const range = document.createRange();
 
-        const textNodes = [];
-        function findTextNodes(node) {
-            for (const child of node.childNodes) {
-                if (child.nodeType === Node.TEXT_NODE) {
-                    textNodes.push(child);
-                } else if (child.nodeType === Node.ELEMENT_NODE && child.childNodes.length > 0) {
-                    findTextNodes(child);
-                }
+    const textNodes = [];
+    function findTextNodes(node) {
+        for (const child of node.childNodes) {
+            if (child.nodeType === Node.TEXT_NODE) {
+                textNodes.push(child);
+            } else if (child.nodeType === Node.ELEMENT_NODE && child.childNodes.length > 0) {
+                findTextNodes(child);
             }
         }
-        findTextNodes(editor);
+    }
+    findTextNodes(editor);
 
-        const lastTextNode = textNodes[textNodes.length - 1];
-        if (lastTextNode) {
-            range.setStart(lastTextNode, lastTextNode.textContent.length);
-            range.setEnd(lastTextNode, lastTextNode.textContent.length);
-        } else {
-            range.selectNodeContents(editor);
-            range.collapse(false);
-        }
-
-        selection.removeAllRanges();
-        selection.addRange(range);
-
-        editor.focus();
-        for (let i = 0; i < 2; i++) {
-            const enterEvent = new KeyboardEvent('keydown', {
-                key: 'Enter',
-                code: 'Enter',
-                bubbles: true,
-                cancelable: true,
-                keyCode: 13
-            });
-            editor.dispatchEvent(enterEvent);
-            document.execCommand('insertParagraph');
-        }
-
-        document.execCommand('insertText', false, SIGNATURE.trim());
-
-        editor.dispatchEvent(new Event('change', { bubbles: true }));
+    const lastTextNode = textNodes[textNodes.length - 1];
+    if (lastTextNode) {
+        range.setStart(lastTextNode, lastTextNode.textContent.length);
+        range.setEnd(lastTextNode, lastTextNode.textContent.length);
+    } else {
+        range.selectNodeContents(editor);
+        range.collapse(false);
     }
 
-    function processEditor(editorDiv) {
-        if (editorDiv.dataset.signatureProcessed) return;
-        editorDiv.dataset.signatureProcessed = 'true';
+    selection.removeAllRanges();
+    selection.addRange(range);
 
-        debugLog('New editor detected:', editorDiv);
+    editor.focus();
+    for (let i = 0; i < 2; i++) {
+        const enterEvent = new KeyboardEvent('keydown', {
+            key: 'Enter',
+            code: 'Enter',
+            bubbles: true,
+            cancelable: true,
+            keyCode: 13
+        });
+        editor.dispatchEvent(enterEvent);
+        document.execCommand('insertParagraph');
+    }
 
-        document.addEventListener('click', (e) => {
-            const replyButton = e.target.closest('[data-testid="tweetButton"], [data-testid="tweetButtonInline"]');
-            if (!replyButton || isAddingSignature || replyButton.getAttribute('aria-disabled') === 'true') return;
+    document.execCommand('insertText', false, SIGNATURE.trim());
 
-            const isReply = Array.from(editorDiv.closest('[role="dialog"]')?.querySelectorAll('*') || editorDiv.closest('[data-testid="inline_reply_offscreen"]')?.querySelectorAll('*') || [])
-                .some(el => el.textContent?.includes('Replying to'));
+    editor.dispatchEvent(new Event('change', { bubbles: true }));
+}
+function processEditor(editorDiv) {
+    if (editorDiv.dataset.signatureProcessed) return;
+    editorDiv.dataset.signatureProcessed = 'true';
 
-            debugLog('Is reply check:', isReply);
+    debugLog('New editor detected:', editorDiv);
 
-            if (!isReply) {
-                debugLog('Not a reply, skipping signature');
-                return;
-            }
+    document.addEventListener('click', (e) => {
+        const replyButton = e.target.closest('[data-testid="tweetButton"], [data-testid="tweetButtonInline"]');
+        if (!replyButton || isAddingSignature || replyButton.getAttribute('aria-disabled') === 'true') return;
 
-            const draftEditor = editorDiv.querySelector('[contenteditable="true"]');
-            if (!draftEditor || !draftEditor.textContent || draftEditor.textContent.endsWith(SIGNATURE)) return;
+        const isReply = Array.from(editorDiv.closest('[role="dialog"]')?.querySelectorAll('*') || editorDiv.closest('[data-testid="inline_reply_offscreen"]')?.querySelectorAll('*') || [])
+            .some(el => el.textContent?.includes('Replying to'));
 
-            debugLog('Reply button clicked, adding signature');
+        debugLog('Is reply check:', isReply);
 
-            e.preventDefault();
-            e.stopPropagation();
+        if (!isReply) {
+            debugLog('Not a reply, skipping signature');
+            return;
+        }
 
-            isAddingSignature = true;
+        const draftEditor = editorDiv.querySelector('[contenteditable="true"]');
+        if (!draftEditor || !draftEditor.textContent || draftEditor.textContent.endsWith(SIGNATURE)) return;
 
-            try {
-                addSignature(draftEditor);
+        debugLog('Reply button clicked, adding signature');
 
-                setTimeout(() => {
-                    debugLog('Triggering delayed click');
-                    replyButton.click();
-                    isAddingSignature = false;
-                }, 100);
-            } catch (error) {
-                debugLog('Error adding signature:', error);
-                isAddingSignature = false;
+        e.preventDefault();
+        e.stopPropagation();
+
+        isAddingSignature = true;
+
+        try {
+            addSignature(draftEditor);
+
+            setTimeout(() => {
+                debugLog('Triggering delayed click');
                 replyButton.click();
-            }
-        }, true);
-    }
+                isAddingSignature = false;
+            }, 100);
+        } catch (error) {
+            debugLog('Error adding signature:', error);
+            isAddingSignature = false;
+            replyButton.click();
+        }
+    }, true);
+}
 
-    const mainObserver = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-            mutation.addedNodes.forEach((node) => {
-                if (node.nodeType === Node.ELEMENT_NODE) {
-                    const editors = node.querySelectorAll('[data-testid="tweetTextarea_0RichTextInputContainer"], [data-testid="tweetTextarea_0"]');
-                    if (editors.length > 0) {
-                        debugLog(`Found ${editors.length} editor(s)`);
-                        editors.forEach(processEditor);
-                    }
+const mainObserver = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                const editors = node.querySelectorAll('[data-testid="tweetTextarea_0RichTextInputContainer"], [data-testid="tweetTextarea_0"]');
+                if (editors.length > 0) {
+                    debugLog(`Found ${editors.length} editor(s)`);
+                    editors.forEach(processEditor);
                 }
-            });
+            }
         });
     });
+});
 
     mainObserver.observe(document.body, {
         childList: true,
