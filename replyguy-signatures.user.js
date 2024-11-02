@@ -7,13 +7,27 @@
 // @match        https://twitter.com/*
 // @match        https://x.com/*
 // @grant        none
+// @run-at       document-idle
 // ==/UserScript==
+
+const toggleDivHTML = `
+    <div class="css-175oi2r r-sdzlij r-dnmrzs r-1awozwy r-18u37iz r-1777fci r-xyw6el r-o7ynqc r-6416eg">
+      <div class="css-175oi2r">
+        <button id="replyGuyToggle">🗣</button>
+      </div>
+    </div>
+`;
 
 (function () {
   'use strict';
 
   const SIGNATURE = 'replyguy/acc';
   let isAddingSignature = false;
+  let isReplyGuyModeEnabled = localStorage.getItem("ReplyGuyMode") ?? "disabled";
+  let replyGuyButtonAdded = false;
+  isReplyGuyModeEnabled = isReplyGuyModeEnabled === "enabled";
+
+
 
   function debugLog(message, data = '') {
     console.log(`%c[Reply Signature Debug] ${message}`, 'color: #00a1f3', data);
@@ -85,7 +99,7 @@
       }
 
       const draftEditor = editorDiv.querySelector('[contenteditable="true"]');
-      if (!draftEditor || !draftEditor.textContent || draftEditor.textContent.endsWith(SIGNATURE)) return;
+      if (!draftEditor || !isReplyGuyModeEnabled || !draftEditor.textContent || draftEditor.textContent.endsWith(SIGNATURE)) return;
 
       debugLog('Reply button clicked, adding signature');
 
@@ -110,14 +124,62 @@
     }, true);
   }
 
+
+  // Button section
+
+  function getReplyToggleBackground() {
+    return isReplyGuyModeEnabled ? "green" : "gray";
+  }
+
+  function toggleNavElement() {
+    // Toggle the variable state
+    isReplyGuyModeEnabled = !isReplyGuyModeEnabled;
+
+    // Save the new state to localStorage
+    localStorage.setItem("ReplyGuyMode", isReplyGuyModeEnabled ? "enabled" : "disabled");
+
+    const toggleDiv = document.getElementById("replyGuyToggle");
+
+    // Change background color based on the toggle state
+    if (toggleDiv) {
+      toggleDiv.style.backgroundColor = getReplyToggleBackground()
+    }
+  }
+
+  function addToggleDiv(element) {
+    const divContainer = document.createElement("div");
+    divContainer.id = "toggleReplyGuyMode";
+    divContainer.className = "css-175oi2r r-6koalj r-eqz5dr r-16y2uox r-1habvwh r-13qz1uu r-1mkv55d r-1ny4l3l r-1loqt21";
+    divContainer.style.display = "block";
+
+    divContainer.innerHTML = toggleDivHTML;
+
+    // Append the toggle div
+    element.appendChild(divContainer);
+
+    // Add event listener to the button
+    const button = document.getElementById("replyGuyToggle");
+    button.style.backgroundColor = getReplyToggleBackground();
+    button.addEventListener('click', toggleNavElement);
+
+    replyGuyButtonAdded = true;
+  }
+
+
   const mainObserver = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
       mutation.addedNodes.forEach((node) => {
         if (node.nodeType === Node.ELEMENT_NODE) {
+          const navElement = document.querySelector(
+            'nav.css-175oi2r.r-eqz5dr.r-1habvwh[role="navigation"], nav.css-175oi2r.r-1awozwy.r-eqz5dr[role="navigation"]'
+          );
           const editors = node.querySelectorAll('[data-testid="tweetTextarea_0RichTextInputContainer"], [data-testid="tweetTextarea_0"]');
           if (editors.length > 0) {
             debugLog(`Found ${editors.length} editor(s)`);
             editors.forEach(processEditor);
+          }
+          if (navElement && !replyGuyButtonAdded) {
+            addToggleDiv(navElement);
           }
         }
       });
